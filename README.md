@@ -10,7 +10,8 @@ The caller provides all runtime parameters (site URL, file paths, output paths) 
 - Connects to SharePoint document libraries using Microsoft Entra credentials (DefaultAzureCredential by default).
 - Lists folders and files recursively.
 - Downloads a file from a SharePoint path.
-- Uploads a local file to a SharePoint path.
+- Downloads a file from a SharePoint path directly into memory.
+- Uploads a local file, raw bytes, or a BytesIO stream to a SharePoint path.
 
 ## Authentication Model
 
@@ -77,8 +78,10 @@ The caller must provide:
 2. `file_path`: path in SharePoint library for download
 3. `output_dir`: local folder for downloaded file
 4. `preserve_path`: whether to keep SharePoint folder structure on local disk (default: `False`)
-5. `local_file`: local file path for upload
-6. `remote_path`: destination path in SharePoint library for upload
+5. `local_file`: local file path for upload when using `upload_file_by_path`
+6. `content`: raw bytes for upload when using `upload_file_bytes`
+7. `stream`: `BytesIO` upload stream when using `upload_file_stream`
+8. `remote_path`: destination path in SharePoint library for upload
 
 ### Example URL format
 
@@ -121,6 +124,7 @@ uv add adapt-sharepoint
 
 ```python
 import asyncio
+from io import BytesIO
 from pathlib import Path
 
 from azure.identity import DefaultAzureCredential
@@ -141,7 +145,7 @@ async def main() -> None:
         for entry in entries:
             print(entry.type, entry.path)
 
-        # 2) Download one file
+        # 2) Download one file to local disk
         downloaded_file = await client.download_file_by_path(
             file_path=remote_download_path,
             output_dir=local_download_dir,
@@ -149,12 +153,34 @@ async def main() -> None:
         )
         print("Downloaded:", downloaded_file)
 
-        # 3) Upload one file
+        # 3) Download one file as raw bytes (in memory)
+        file_bytes = await client.download_file_bytes_by_path(remote_download_path)
+        print("Downloaded bytes:", len(file_bytes))
+
+        # 4) Download one file as BytesIO stream (in memory)
+        stream = await client.download_file_stream_by_path(remote_download_path)
+        print("Stream size:", len(stream.getvalue()))
+
+        # 5) Upload one local file
         uploaded = await client.upload_file_by_path(
             local_file=local_upload_file,
             remote_path=remote_upload_path,
         )
-        print("Uploaded:", uploaded.get("name", "<unknown>"))
+        print("Uploaded file:", uploaded.get("name", "<unknown>"))
+
+        # 6) Upload raw bytes
+        uploaded_bytes = await client.upload_file_bytes(
+            content=b"hello from memory",
+            remote_path="archive/2026/bytes-example.txt",
+        )
+        print("Uploaded bytes:", uploaded_bytes.get("name", "<unknown>"))
+
+        # 7) Upload BytesIO stream
+        uploaded_stream = await client.upload_file_stream(
+            stream=BytesIO(b"hello from stream"),
+            remote_path="archive/2026/stream-example.txt",
+        )
+        print("Uploaded stream:", uploaded_stream.get("name", "<unknown>"))
 
 
 if __name__ == "__main__":
@@ -196,7 +222,11 @@ Methods:
 
 - `await list_items() -> list[DriveEntry]`
 - `await download_file_by_path(file_path: str, output_dir: str | PathLike[str], preserve_path: bool = False) -> Path`
+- `await download_file_bytes_by_path(file_path: str) -> bytes`
+- `await download_file_stream_by_path(file_path: str) -> BytesIO`
 - `await upload_file_by_path(local_file: str | PathLike[str], remote_path: str) -> dict[str, Any]`
+- `await upload_file_bytes(content: bytes, remote_path: str) -> dict[str, Any]`
+- `await upload_file_stream(stream: BytesIO, remote_path: str) -> dict[str, Any]`
 
 Download behavior:
 

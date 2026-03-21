@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from io import BytesIO
 from os import PathLike, fspath
 from pathlib import Path
 from types import TracebackType
@@ -98,25 +99,9 @@ class SharePointGraphClient:
         preserve_path: bool = False,
     ) -> Path:
         self._ensure_ready()
-        assert self._client is not None
-        assert self._headers is not None
-        assert self._drive_id is not None
 
         output_dir_path = Path(fspath(output_dir))
-
-        encoded_path = quote(file_path.strip("/"), safe="/")
-        response = await self._client.get(
-            f"/drives/{self._drive_id}/root:/{encoded_path}:/content",
-            headers=self._headers,
-        )
-
-        if (
-            response.status_code in {301, 302, 303, 307, 308}
-            and response.headers.get("Location")
-        ):
-            response = await self._client.get(response.headers["Location"])
-
-        response.raise_for_status()
+        content = await self.download_file_bytes_by_path(file_path)
 
         if preserve_path:
             normalized = file_path.strip("/\\").replace("\\", "/")
@@ -124,8 +109,23 @@ class SharePointGraphClient:
         else:
             local_path = output_dir_path / Path(file_path).name
         local_path.parent.mkdir(parents=True, exist_ok=True)
-        local_path.write_bytes(response.content)
+        local_path.write_bytes(content)
         return local_path
+
+    async def download_file_bytes_by_path(self, file_path: str) -> bytes:
+        """Download a SharePoint file by path and return its content as bytes."""
+        self._ensure_ready()
+        assert self._drive_id is not None
+
+        encoded_path = quote(file_path.strip("/"), safe="/")
+        return await self._download_content(
+            f"/drives/{self._drive_id}/root:/{encoded_path}:/content"
+        )
+
+    async def download_file_stream_by_path(self, file_path: str) -> BytesIO:
+        """Download a SharePoint file by path and return it as an in-memory stream."""
+        content = await self.download_file_bytes_by_path(file_path)
+        return BytesIO(content)
 
     async def upload_file_by_path(
         self,
@@ -133,24 +133,49 @@ class SharePointGraphClient:
         remote_path: str,
     ) -> dict[str, Any]:
         self._ensure_ready()
-        assert self._client is not None
-        assert self._headers is not None
-        assert self._drive_id is not None
 
         local_file_path = Path(fspath(local_file))
 
         if not local_file_path.exists() or not local_file_path.is_file():
             raise FileNotFoundError(f"Local file not found: {local_file_path}")
 
+        return await self.upload_file_bytes(
+            content=local_file_path.read_bytes(),
+            remote_path=remote_path,
+        )
+
+    async def upload_file_bytes(
+        self,
+        content: bytes,
+        remote_path: str,
+    ) -> dict[str, Any]:
+        """Upload raw bytes to a SharePoint path."""
+        self._ensure_ready()
+        assert self._client is not None
+        assert self._headers is not None
+        assert self._drive_id is not None
+
         encoded_path = quote(remote_path.strip("/"), safe="/")
         headers = {**self._headers, "Content-Type": "application/octet-stream"}
         response = await self._client.put(
             f"/drives/{self._drive_id}/root:/{encoded_path}:/content",
             headers=headers,
-            content=local_file_path.read_bytes(),
+            content=content,
         )
         response.raise_for_status()
         return response.json()
+
+    async def upload_file_stream(
+        self,
+        stream: BytesIO,
+        remote_path: str,
+    ) -> dict[str, Any]:
+        """Upload a BytesIO stream to a SharePoint path."""
+        stream.seek(0)
+        return await self.upload_file_bytes(
+            content=stream.read(),
+            remote_path=remote_path,
+        )
 
     async def _initialize_drive(self) -> None:
         assert self._client is not None
@@ -223,6 +248,21 @@ class SharePointGraphClient:
             next_url = next_link if isinstance(next_link, str) else None
 
         return items
+
+    async def _download_content(self, url: str) -> bytes:
+        assert self._client is not None
+        assert self._headers is not None
+
+        response = await self._client.get(url, headers=self._headers)
+
+        if (
+            response.status_code in {301, 302, 303, 307, 308}
+            and response.headers.get("Location")
+        ):
+            response = await self._client.get(response.headers["Location"])
+
+        response.raise_for_status()
+        return response.content
 
     def _ensure_ready(self) -> None:
         if not self._client or not self._headers:

@@ -1,3 +1,4 @@
+from io import BytesIO
 from os import PathLike
 from pathlib import Path
 from typing import cast
@@ -78,3 +79,43 @@ async def test_upload_file_by_path_sends_content(tmp_path: Path) -> None:
     assert len(fake_client.calls) == 1
     assert fake_client.calls[0][0].endswith("/root:/target/folder/source.pdf:/content")
     assert fake_client.calls[0][1] == b"hello"
+
+
+async def test_upload_file_bytes_sends_content() -> None:
+    subject = SharePointGraphClient("https://atc2021.sharepoint.com/sites/ATC-3RPA/Shared%20Documents/Forms/AllItems.aspx")
+    fake_client = FakeClient()
+    subject._client = cast(GraphHttpClient, fake_client)
+    subject._headers = {"Authorization": "Bearer token"}
+    subject._drive_id = "drive-id"
+
+    result = await subject.upload_file_bytes(
+        b"hello-bytes",
+        "target/folder/bytes.pdf",
+    )
+
+    assert result["name"] == "uploaded.pdf"
+    assert len(fake_client.calls) == 1
+    assert fake_client.calls[0][0].endswith("/root:/target/folder/bytes.pdf:/content")
+    assert fake_client.calls[0][1] == b"hello-bytes"
+
+
+async def test_upload_file_stream_sends_content() -> None:
+    subject = SharePointGraphClient("https://atc2021.sharepoint.com/sites/ATC-3RPA/Shared%20Documents/Forms/AllItems.aspx")
+    fake_client = FakeClient()
+    subject._client = cast(GraphHttpClient, fake_client)
+    subject._headers = {"Authorization": "Bearer token"}
+    subject._drive_id = "drive-id"
+
+    stream = BytesIO(b"hello-stream")
+    stream.read(2)
+
+    result = await subject.upload_file_stream(
+        stream,
+        "target/folder/stream.pdf",
+    )
+
+    assert result["name"] == "uploaded.pdf"
+    assert len(fake_client.calls) == 1
+    assert fake_client.calls[0][0].endswith("/root:/target/folder/stream.pdf:/content")
+    assert fake_client.calls[0][1] == b"hello-stream"
+
