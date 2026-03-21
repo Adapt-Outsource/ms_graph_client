@@ -133,24 +133,49 @@ class SharePointGraphClient:
         remote_path: str,
     ) -> dict[str, Any]:
         self._ensure_ready()
-        assert self._client is not None
-        assert self._headers is not None
-        assert self._drive_id is not None
 
         local_file_path = Path(fspath(local_file))
 
         if not local_file_path.exists() or not local_file_path.is_file():
             raise FileNotFoundError(f"Local file not found: {local_file_path}")
 
+        return await self.upload_file_bytes_by_path(
+            content=local_file_path.read_bytes(),
+            remote_path=remote_path,
+        )
+
+    async def upload_file_bytes_by_path(
+        self,
+        content: bytes,
+        remote_path: str,
+    ) -> dict[str, Any]:
+        """Upload raw bytes to a SharePoint path."""
+        self._ensure_ready()
+        assert self._client is not None
+        assert self._headers is not None
+        assert self._drive_id is not None
+
         encoded_path = quote(remote_path.strip("/"), safe="/")
         headers = {**self._headers, "Content-Type": "application/octet-stream"}
         response = await self._client.put(
             f"/drives/{self._drive_id}/root:/{encoded_path}:/content",
             headers=headers,
-            content=local_file_path.read_bytes(),
+            content=content,
         )
         response.raise_for_status()
         return response.json()
+
+    async def upload_file_stream_by_path(
+        self,
+        stream: BytesIO,
+        remote_path: str,
+    ) -> dict[str, Any]:
+        """Upload a BytesIO stream to a SharePoint path."""
+        stream.seek(0)
+        return await self.upload_file_bytes_by_path(
+            content=stream.read(),
+            remote_path=remote_path,
+        )
 
     async def _initialize_drive(self) -> None:
         assert self._client is not None
