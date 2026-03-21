@@ -79,8 +79,8 @@ The caller must provide:
 3. `output_dir`: local folder for downloaded file
 4. `preserve_path`: whether to keep SharePoint folder structure on local disk (default: `False`)
 5. `local_file`: local file path for upload when using `upload_file_by_path`
-6. `content`: raw bytes for upload when using `upload_file_bytes_by_path`
-7. `stream`: `BytesIO` upload stream when using `upload_file_stream_by_path`
+6. `content`: raw bytes for upload when using `upload_file_bytes`
+7. `stream`: `BytesIO` upload stream when using `upload_file_stream`
 8. `remote_path`: destination path in SharePoint library for upload
 
 ### Example URL format
@@ -169,14 +169,14 @@ async def main() -> None:
         print("Uploaded file:", uploaded.get("name", "<unknown>"))
 
         # 6) Upload raw bytes
-        uploaded_bytes = await client.upload_file_bytes_by_path(
+        uploaded_bytes = await client.upload_file_bytes(
             content=b"hello from memory",
             remote_path="archive/2026/bytes-example.txt",
         )
         print("Uploaded bytes:", uploaded_bytes.get("name", "<unknown>"))
 
         # 7) Upload BytesIO stream
-        uploaded_stream = await client.upload_file_stream_by_path(
+        uploaded_stream = await client.upload_file_stream(
             stream=BytesIO(b"hello from stream"),
             remote_path="archive/2026/stream-example.txt",
         )
@@ -225,8 +225,8 @@ Methods:
 - `await download_file_bytes_by_path(file_path: str) -> bytes`
 - `await download_file_stream_by_path(file_path: str) -> BytesIO`
 - `await upload_file_by_path(local_file: str | PathLike[str], remote_path: str) -> dict[str, Any]`
-- `await upload_file_bytes_by_path(content: bytes, remote_path: str) -> dict[str, Any]`
-- `await upload_file_stream_by_path(stream: BytesIO, remote_path: str) -> dict[str, Any]`
+- `await upload_file_bytes(content: bytes, remote_path: str) -> dict[str, Any]`
+- `await upload_file_stream(stream: BytesIO, remote_path: str) -> dict[str, Any]`
 
 Download behavior:
 

@@ -139,12 +139,12 @@ class SharePointGraphClient:
         if not local_file_path.exists() or not local_file_path.is_file():
             raise FileNotFoundError(f"Local file not found: {local_file_path}")
 
-        return await self.upload_file_bytes_by_path(
+        return await self.upload_file_bytes(
             content=local_file_path.read_bytes(),
             remote_path=remote_path,
         )
 
-    async def upload_file_bytes_by_path(
+    async def upload_file_bytes(
         self,
         content: bytes,
         remote_path: str,
@@ -165,14 +165,14 @@ class SharePointGraphClient:
         response.raise_for_status()
         return response.json()
 
-    async def upload_file_stream_by_path(
+    async def upload_file_stream(
         self,
         stream: BytesIO,
         remote_path: str,
     ) -> dict[str, Any]:
         """Upload a BytesIO stream to a SharePoint path."""
         stream.seek(0)
-        return await self.upload_file_bytes_by_path(
+        return await self.upload_file_bytes(
             content=stream.read(),
             remote_path=remote_path,
         )
