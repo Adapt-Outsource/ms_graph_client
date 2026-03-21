@@ -95,6 +95,7 @@ class SharePointGraphClient:
         self,
         file_path: str,
         output_dir: str | PathLike[str],
+        preserve_path: bool = False,
     ) -> Path:
         self._ensure_ready()
         assert self._client is not None
@@ -117,7 +118,11 @@ class SharePointGraphClient:
 
         response.raise_for_status()
 
-        local_path = output_dir_path / file_path
+        if preserve_path:
+            normalized = file_path.strip("/\\").replace("\\", "/")
+            local_path = output_dir_path.joinpath(*normalized.split("/"))
+        else:
+            local_path = output_dir_path / Path(file_path).name
         local_path.parent.mkdir(parents=True, exist_ok=True)
         local_path.write_bytes(response.content)
         return local_path

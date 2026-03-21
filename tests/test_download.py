@@ -77,4 +77,23 @@ async def test_download_file_by_path_follows_redirect(tmp_path: Path) -> None:
     assert output.exists()
     assert output.read_bytes() == b"pdf-bytes"
     assert output.name == "เขัาห้องสอบ.pdf"
+    assert output.parent == tmp_path
     assert len(fake_client.calls) == 2
+
+
+async def test_download_file_by_path_preserve_path_true(tmp_path: Path) -> None:
+    subject = SharePointGraphClient("https://atc2021.sharepoint.com/sites/ATC-3RPA/Shared%20Documents/Forms/AllItems.aspx")
+    fake_client = FakeClient()
+    subject._client = cast(GraphHttpClient, fake_client)
+    subject._headers = {"Authorization": "Bearer token"}
+    subject._drive_id = "drive-id"
+
+    output = await subject.download_file_by_path(
+        "test/เขัาห้องสอบ.pdf",
+        tmp_path,
+        preserve_path=True,
+    )
+
+    assert output.exists()
+    assert output.read_bytes() == b"pdf-bytes"
+    assert output == tmp_path / "test" / "เขัาห้องสอบ.pdf"

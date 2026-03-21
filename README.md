@@ -7,7 +7,7 @@ The caller provides all runtime parameters (site URL, file paths, output paths) 
 
 ## What This Package Does
 
-- Connects to SharePoint document libraries using Azure CLI auth.
+- Connects to SharePoint document libraries using Microsoft Entra credentials (DefaultAzureCredential by default).
 - Lists folders and files recursively.
 - Downloads a file from a SharePoint path.
 - Uploads a local file to a SharePoint path.
@@ -67,7 +67,7 @@ from adapt_sharepoint import SharePointGraphClient
 
 Constructor:
 
-- SharePointGraphClient(sharepoint_url: str, credential: TokenCredential | None = None)
+- `SharePointGraphClient(sharepoint_url: str, credential: TokenCredential | None = None)`
 
 ## Parameters You Must Pass
 
@@ -76,8 +76,9 @@ The caller must provide:
 1. `sharepoint_url`: URL of the target SharePoint document library page
 2. `file_path`: path in SharePoint library for download
 3. `output_dir`: local folder for downloaded file
-4. `local_file`: local file path for upload
-5. `remote_path`: destination path in SharePoint library for upload
+4. `preserve_path`: whether to keep SharePoint folder structure on local disk (default: `False`)
+5. `local_file`: local file path for upload
+6. `remote_path`: destination path in SharePoint library for upload
 
 ### Example URL format
 
@@ -90,6 +91,23 @@ https://your-tenant.sharepoint.com/sites/YourSite/Shared%20Documents/Forms/AllIt
 ```text
 folder/subfolder/report.pdf
 ```
+
+## Download Path Behavior
+
+When calling `download_file_by_path`, behavior depends on `preserve_path`:
+
+- `preserve_path=False` (default): save by filename only into `output_dir`
+- `preserve_path=True`: preserve full SharePoint sub-path under `output_dir`
+
+Example:
+
+- `file_path="incoming/monthly/report.pdf"`
+- `output_dir="downloads"`
+
+Results:
+
+- `preserve_path=False` -> `downloads/report.pdf`
+- `preserve_path=True` -> `downloads/incoming/monthly/report.pdf`
 
 ## Step-By-Step Usage In Another Project
 
@@ -127,6 +145,7 @@ async def main() -> None:
         downloaded_file = await client.download_file_by_path(
             file_path=remote_download_path,
             output_dir=local_download_dir,
+            preserve_path=False,
         )
         print("Downloaded:", downloaded_file)
 
@@ -171,13 +190,18 @@ uv run app.py
 
 Class:
 
-- `SharePointGraphClient(sharepoint_url: str)`
+- `SharePointGraphClient(sharepoint_url: str, credential: TokenCredential | None = None)`
 
 Methods:
 
 - `await list_items() -> list[DriveEntry]`
-- `await download_file_by_path(file_path: str, output_dir: Path) -> Path`
-- `await upload_file_by_path(local_file: Path, remote_path: str) -> dict[str, Any]`
+- `await download_file_by_path(file_path: str, output_dir: str | PathLike[str], preserve_path: bool = False) -> Path`
+- `await upload_file_by_path(local_file: str | PathLike[str], remote_path: str) -> dict[str, Any]`
+
+Download behavior:
+
+- `preserve_path=False` (default): save file directly in `output_dir` using filename only.
+- `preserve_path=True`: keep full SharePoint subfolder path under `output_dir`.
 
 ## Error Notes
 
