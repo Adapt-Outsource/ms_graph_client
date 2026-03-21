@@ -48,7 +48,7 @@ uv add adapt-sharepoint
 ### Option 2: Install directly from GitHub
 
 ```bash
-uv add git+https://github.com/<your-org>/<your-repo>.git
+uv add git+https://github.com/Adapt-Outsource/ms_graph_client.git
 ```
 
 ### Option 3: Local development install (inside this repo)
