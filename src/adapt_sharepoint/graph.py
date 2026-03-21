@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from os import PathLike, fspath
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Protocol, cast
@@ -90,11 +91,17 @@ class SharePointGraphClient:
         assert self._drive_id is not None
         return await self._walk_drive(self._drive_id)
 
-    async def download_file_by_path(self, file_path: str, output_dir: Path) -> Path:
+    async def download_file_by_path(
+        self,
+        file_path: str,
+        output_dir: str | PathLike[str],
+    ) -> Path:
         self._ensure_ready()
         assert self._client is not None
         assert self._headers is not None
         assert self._drive_id is not None
+
+        output_dir_path = Path(fspath(output_dir))
 
         encoded_path = quote(file_path.strip("/"), safe="/")
         response = await self._client.get(
@@ -110,14 +117,14 @@ class SharePointGraphClient:
 
         response.raise_for_status()
 
-        local_path = output_dir / file_path
+        local_path = output_dir_path / file_path
         local_path.parent.mkdir(parents=True, exist_ok=True)
         local_path.write_bytes(response.content)
         return local_path
 
     async def upload_file_by_path(
         self,
-        local_file: Path,
+        local_file: str | PathLike[str],
         remote_path: str,
     ) -> dict[str, Any]:
         self._ensure_ready()
@@ -125,15 +132,17 @@ class SharePointGraphClient:
         assert self._headers is not None
         assert self._drive_id is not None
 
-        if not local_file.exists() or not local_file.is_file():
-            raise FileNotFoundError(f"Local file not found: {local_file}")
+        local_file_path = Path(fspath(local_file))
+
+        if not local_file_path.exists() or not local_file_path.is_file():
+            raise FileNotFoundError(f"Local file not found: {local_file_path}")
 
         encoded_path = quote(remote_path.strip("/"), safe="/")
         headers = {**self._headers, "Content-Type": "application/octet-stream"}
         response = await self._client.put(
             f"/drives/{self._drive_id}/root:/{encoded_path}:/content",
             headers=headers,
-            content=local_file.read_bytes(),
+            content=local_file_path.read_bytes(),
         )
         response.raise_for_status()
         return response.json()

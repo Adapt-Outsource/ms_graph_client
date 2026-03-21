@@ -1,3 +1,4 @@
+from os import PathLike
 from pathlib import Path
 from typing import cast
 
@@ -64,7 +65,14 @@ async def test_download_file_by_path_follows_redirect(tmp_path: Path) -> None:
     subject._headers = {"Authorization": "Bearer token"}
     subject._drive_id = "drive-id"
 
-    output = await subject.download_file_by_path("test/เขัาห้องสอบ.pdf", tmp_path)
+    class CustomPath(PathLike[str]):
+        def __fspath__(self) -> str:
+            return str(tmp_path)
+
+    output = await subject.download_file_by_path(
+        "test/เขัาห้องสอบ.pdf",
+        CustomPath(),
+    )
 
     assert output.exists()
     assert output.read_bytes() == b"pdf-bytes"

@@ -1,3 +1,4 @@
+from os import PathLike
 from pathlib import Path
 from typing import cast
 
@@ -64,7 +65,14 @@ async def test_upload_file_by_path_sends_content(tmp_path: Path) -> None:
     subject._headers = {"Authorization": "Bearer token"}
     subject._drive_id = "drive-id"
 
-    result = await subject.upload_file_by_path(source, "target/folder/source.pdf")
+    class CustomPath(PathLike[str]):
+        def __fspath__(self) -> str:
+            return str(source)
+
+    result = await subject.upload_file_by_path(
+        CustomPath(),
+        "target/folder/source.pdf",
+    )
 
     assert result["name"] == "uploaded.pdf"
     assert len(fake_client.calls) == 1
