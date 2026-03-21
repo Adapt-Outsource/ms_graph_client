@@ -1,3 +1,4 @@
+from io import BytesIO
 from os import PathLike
 from pathlib import Path
 from typing import cast
@@ -38,7 +39,7 @@ class FakeClient:
     ) -> FakeResponse:
         _ = headers
         self.calls.append(url)
-        if url.endswith(":/content"):
+        if url.endswith(":/content") or url.endswith("/content"):
             return FakeResponse(302, location="https://download.example/file")
         if url == "https://download.example/file":
             return FakeResponse(200, content=b"pdf-bytes")
@@ -97,3 +98,41 @@ async def test_download_file_by_path_preserve_path_true(tmp_path: Path) -> None:
     assert output.exists()
     assert output.read_bytes() == b"pdf-bytes"
     assert output == tmp_path / "test" / "เขัาห้องสอบ.pdf"
+
+
+async def test_download_file_bytes_by_path_follows_redirect() -> None:
+    subject = SharePointGraphClient("https://atc2021.sharepoint.com/sites/ATC-3RPA/Shared%20Documents/Forms/AllItems.aspx")
+    fake_client = FakeClient()
+    subject._client = cast(GraphHttpClient, fake_client)
+    subject._headers = {"Authorization": "Bearer token"}
+    subject._drive_id = "drive-id"
+
+    data = await subject.download_file_bytes_by_path("test/เขัาห้องสอบ.pdf")
+
+    assert data == b"pdf-bytes"
+    expected_suffix = (
+        "/root:/test/"
+        "%E0%B9%80%E0%B8%82%E0%B8%B1%E0%B8%B2%E0%B8%AB%E0%B9%89"
+        "%E0%B8%AD%E0%B8%87%E0%B8%AA%E0%B8%AD%E0%B8%9A.pdf:/content"
+    )
+    assert fake_client.calls[0].endswith(expected_suffix)
+    assert fake_client.calls[1] == "https://download.example/file"
+    assert len(fake_client.calls) == 2
+
+
+async def test_download_file_stream_by_path_returns_bytesio() -> None:
+    subject = SharePointGraphClient("https://atc2021.sharepoint.com/sites/ATC-3RPA/Shared%20Documents/Forms/AllItems.aspx")
+    fake_client = FakeClient()
+    subject._client = cast(GraphHttpClient, fake_client)
+    subject._headers = {"Authorization": "Bearer token"}
+    subject._drive_id = "drive-id"
+
+    stream = await subject.download_file_stream_by_path("test/เขัาห้องสอบ.pdf")
+
+    assert isinstance(stream, BytesIO)
+    assert stream.tell() == 0
+    assert stream.getvalue() == b"pdf-bytes"
+    assert stream.read() == b"pdf-bytes"
+    assert stream.tell() == len(b"pdf-bytes")
+    assert len(fake_client.calls) == 2
+

@@ -10,6 +10,7 @@ The caller provides all runtime parameters (site URL, file paths, output paths) 
 - Connects to SharePoint document libraries using Microsoft Entra credentials (DefaultAzureCredential by default).
 - Lists folders and files recursively.
 - Downloads a file from a SharePoint path.
+- Downloads a file from a SharePoint path directly into memory.
 - Uploads a local file to a SharePoint path.
 
 ## Authentication Model
@@ -196,6 +197,8 @@ Methods:
 
 - `await list_items() -> list[DriveEntry]`
 - `await download_file_by_path(file_path: str, output_dir: str | PathLike[str], preserve_path: bool = False) -> Path`
+- `await download_file_bytes_by_path(file_path: str) -> bytes`
+- `await download_file_stream_by_path(file_path: str) -> BytesIO`
 - `await upload_file_by_path(local_file: str | PathLike[str], remote_path: str) -> dict[str, Any]`
 
 Download behavior:
