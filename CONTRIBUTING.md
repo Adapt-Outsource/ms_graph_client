@@ -3,6 +3,7 @@
 Thank you for contributing to this project.
 
 This repository provides a reusable SharePoint library (`adapt_sharepoint`) with a production-oriented quality gate:
+
 - linting (`ruff`)
 - static type checking (`mypy`)
 - unit tests (`pytest`)
