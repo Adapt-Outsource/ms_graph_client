@@ -1,10 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
 [project]
-name = "adapt-test"
+name = "adapt-sharepoint"
 version = "0.1.0"
-description = "Add your description here"
+description = "Reusable Microsoft Graph helpers for SharePoint listing and downloads"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "azure-identity>=1.25.3",
     "msgraph-core>=1.3.8",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "mypy>=1.18.2",
+    "ruff>=0.13.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/adapt_sharepoint"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_any_generics = true
+
+[[tool.mypy.overrides]]
+module = ["msgraph_core"]
+ignore_missing_imports = true
