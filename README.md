@@ -12,6 +12,7 @@ The caller provides all runtime parameters (site URL, file paths, output paths) 
 - Downloads a file from a SharePoint path.
 - Downloads a file from a SharePoint path directly into memory.
 - Uploads a local file, raw bytes, or a BytesIO stream to a SharePoint path.
+- Deletes files or folders by SharePoint path.
 
 ## Authentication Model
 
@@ -82,6 +83,7 @@ The caller must provide:
 6. `content`: raw bytes for upload when using `upload_file_bytes`
 7. `stream`: `BytesIO` upload stream when using `upload_file_stream`
 8. `remote_path`: destination path in SharePoint library for upload
+9. `item_path` / `file_path` / `directory_path`: SharePoint path to delete when using delete APIs
 
 ### Example URL format
 
@@ -137,6 +139,7 @@ async def main() -> None:
     local_download_dir = Path("downloads")
     local_upload_file = Path("downloads/report.pdf")
     remote_upload_path = "archive/2026/report-copy.pdf"
+    remote_delete_path = remote_upload_path
     credential = DefaultAzureCredential()
 
     async with SharePointGraphClient(sharepoint_url, credential=credential) as client:
@@ -181,6 +184,10 @@ async def main() -> None:
             remote_path="archive/2026/stream-example.txt",
         )
         print("Uploaded stream:", uploaded_stream.get("name", "<unknown>"))
+
+        # 8) Delete one file by path
+        await client.delete_file_by_path(remote_delete_path)
+        print("Deleted file:", remote_delete_path)
 
 
 if __name__ == "__main__":
@@ -227,17 +234,22 @@ Methods:
 - `await upload_file_by_path(local_file: str | PathLike[str], remote_path: str) -> dict[str, Any]`
 - `await upload_file_bytes(content: bytes, remote_path: str) -> dict[str, Any]`
 - `await upload_file_stream(stream: BytesIO, remote_path: str) -> dict[str, Any]`
+- `await delete_item_by_path(item_path: str) -> None`
+- `await delete_file_by_path(file_path: str) -> None`
+- `await delete_directory_by_path(directory_path: str) -> None`
 
 Download behavior:
 
 - `preserve_path=False` (default): save file directly in `output_dir` using filename only.
 - `preserve_path=True`: keep full SharePoint subfolder path under `output_dir`.
+- Deleting a directory removes the folder and all nested files/folders.
 
 ## Error Notes
 
 - If login is missing or expired: run `az login` again.
 - If access is denied (403): your account lacks permission to that site/library.
 - If file is not found (404): verify `file_path` or `remote_path` is correct.
+- If delete path is empty (`""` or `"/"`): delete APIs raise `ValueError`.
 
 ## Quality Checks (Recommended Before Release)
 

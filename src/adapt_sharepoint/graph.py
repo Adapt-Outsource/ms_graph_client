@@ -42,6 +42,13 @@ class GraphHttpClient(Protocol):
         content: bytes = b"",
     ) -> GraphHttpResponse: ...
 
+    async def delete(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> GraphHttpResponse: ...
+
     async def aclose(self) -> None: ...
 
 
@@ -90,7 +97,7 @@ class SharePointGraphClient:
     async def list_items(self) -> list[DriveEntry]:
         self._ensure_ready()
         assert self._drive_id is not None
-        return await self._walk_drive(self._drive_id)
+        return await self._walk_drive(self._drive_id, None)
 
     async def download_file_by_path(
         self,
@@ -177,6 +184,32 @@ class SharePointGraphClient:
             remote_path=remote_path,
         )
 
+    async def delete_item_by_path(self, item_path: str) -> None:
+        """Delete a SharePoint item by path. Folders are deleted recursively."""
+        self._ensure_ready()
+        assert self._client is not None
+        assert self._headers is not None
+        assert self._drive_id is not None
+
+        normalized = item_path.strip("/")
+        if not normalized:
+            raise ValueError("Item path must not be empty")
+
+        encoded_path = quote(normalized, safe="/")
+        response = await self._client.delete(
+            f"/drives/{self._drive_id}/root:/{encoded_path}",
+            headers=self._headers,
+        )
+        response.raise_for_status()
+
+    async def delete_file_by_path(self, file_path: str) -> None:
+        """Delete a SharePoint file by path."""
+        await self.delete_item_by_path(file_path)
+
+    async def delete_directory_by_path(self, directory_path: str) -> None:
+        """Delete a SharePoint directory by path, including all nested content."""
+        await self.delete_item_by_path(directory_path)
+
     async def _initialize_drive(self) -> None:
         assert self._client is not None
         assert self._headers is not None
@@ -192,7 +225,7 @@ class SharePointGraphClient:
     async def _walk_drive(
         self,
         drive_id: str,
-        item_id: str | None = None,
+        item_id: str | None,
         parent_path: str = "",
     ) -> list[DriveEntry]:
         if item_id:

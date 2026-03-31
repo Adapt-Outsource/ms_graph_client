@@ -12,6 +12,7 @@ async def run_example() -> None:
     )
     remote_file_path = os.getenv("REMOTE_FILE_PATH", "samples/report.pdf")
     upload_target_path = os.getenv("UPLOAD_TARGET_PATH", "uploads/report-copy.pdf")
+    delete_target_path = os.getenv("DELETE_TARGET_PATH", "delete/report")
 
     async with SharePointGraphClient(sharepoint_url) as client:
         items = await client.list_items()
@@ -29,6 +30,9 @@ async def run_example() -> None:
             remote_path=upload_target_path,
         )
         print(f"Uploaded: {uploaded.get('name', '<unknown>')}")
+
+        await client.delete_file_by_path(delete_target_path)
+        print(f"Deleted remote file: {delete_target_path}")
 
 
 if __name__ == "__main__":
