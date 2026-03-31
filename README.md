@@ -227,11 +227,15 @@ Methods:
 - `await upload_file_by_path(local_file: str | PathLike[str], remote_path: str) -> dict[str, Any]`
 - `await upload_file_bytes(content: bytes, remote_path: str) -> dict[str, Any]`
 - `await upload_file_stream(stream: BytesIO, remote_path: str) -> dict[str, Any]`
+- `await delete_item_by_path(item_path: str) -> None`
+- `await delete_file_by_path(file_path: str) -> None`
+- `await delete_directory_by_path(directory_path: str) -> None`
 
 Download behavior:
 
 - `preserve_path=False` (default): save file directly in `output_dir` using filename only.
 - `preserve_path=True`: keep full SharePoint subfolder path under `output_dir`.
+- Deleting a directory removes the folder and all nested files/folders.
 
 ## Error Notes
 
