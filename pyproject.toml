@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "adapt-sharepoint"
-version = "0.1.0"
+version = "0.1.1"
 description = "Reusable Microsoft Graph helpers for SharePoint listing and downloads"
 readme = "README.md"
 requires-python = ">=3.11"
